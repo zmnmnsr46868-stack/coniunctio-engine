@@ -1,119 +1,119 @@
 import json
 import time
+from typing import Any
 from coniunctio_engine import ConiunctioEngine
 
-PRESETS = {
-    "spiral": [
-        (0.20, 0.25, 0.15),
-        (0.25, 0.30, 0.20),
-        (0.30, 0.35, 0.25),
-        (0.35, 0.40, 0.30),
-    ],
-    "shock": [
-        (0.20, 0.20, 0.20),
-        (0.22, 0.22, 0.22),
-        (0.95, 0.90, 0.85),  # High tension triggers GROUND_RESET
-        (0.15, 0.15, 0.15),
-    ],
-}
+
+def run_preset_ramp(engine: ConiunctioEngine) -> None:
+    """Preset 1: Gradual Individuation Ramp. Slowly scales vectors to test phase-lock endurance."""
+    print("\n[Preset] Running Gradual Individuation Ramp...")
+    steps = [
+        (0.1, 0.1, 0.1), (0.15, 0.2, 0.15), (0.2, 0.25, 0.2),
+        (0.3, 0.3, 0.25), (0.4, 0.35, 0.3), (0.5, 0.4, 0.35)
+    ]
+    for t, f, i in steps:
+        rec = engine.step(t, f, i)
+        print(f"Cycle {rec['cycle']} | State: {rec['state']} | Coherence: {rec['coherence']} | Depth: {rec['spiral_depth']}")
+    print("Ramp preset complete.")
 
 
-def print_banner():
-    print("=" * 64)
-    print("       CONIUNCTIO ENGINE v0.2 — INTERACTIVE SANDBOX       ")
-    print("=" * 64)
-    print("Enter thought, feeling, and instinct values (e.g., 0.2, 0.3, 0.1)")
-    print("Commands:")
-    print("  demo    : Run a preset trajectory ('spiral' or 'shock')")
-    print("  history : View past cycles")
-    print("  export  : Save trajectory history to a JSON file")
-    print("  reset   : Clear history and return to GroundState")
-    print("  exit    : Quit the sandbox\n")
+def run_preset_rupture(engine: ConiunctioEngine) -> None:
+    """Preset 2: Sudden Rupture & Re-Integration. Builds depth, injects shock, and tracks recovery."""
+    print("\n[Preset] Running Sudden Rupture & Re-Integration...")
+    for _ in range(5):
+        rec = engine.step(0.2, 0.2, 0.2)
+        print(f"Cycle {rec['cycle']} | State: {rec['state']} | Depth: {rec['spiral_depth']}")
+    
+    print(">>> Injecting high-tension shock vector [4.0, -4.0, 4.0]...")
+    rec = engine.step(4.0, -4.0, 4.0)
+    print(f"Cycle {rec['cycle']} | State: {rec['state']} | Coherence: {rec['coherence']} | Depth: {rec['spiral_depth']}")
+    
+    print(">>> Re-integrating baseline inputs...")
+    for _ in range(3):
+        rec = engine.step(0.2, 0.2, 0.2)
+        print(f"Cycle {rec['cycle']} | State: {rec['state']} | Coherence: {rec['coherence']} | Depth: {rec['spiral_depth']}")
+    print("Rupture preset complete.")
 
 
-def print_step(rec):
-    print(
-        f"   [Cycle {rec['cycle']}] State: {rec['state']} | "
-        f"Depth: {rec['spiral_depth']} | Coherence: {rec['coherence']:.4f} | "
-        f"Tension: {rec['tension']:.4f}"
-    )
-    print(f"   Adaptive Prior: {rec['prior']}\n")
+def run_preset_oscillate(engine: ConiunctioEngine) -> None:
+    """Preset 3: Oscillating Polarity Drift. Alternates between dominant thought and feeling."""
+    print("\n[Preset] Running Oscillating Polarity Drift...")
+    sequence = [
+        (0.4, 0.0, 0.0),
+        (0.0, 0.4, 0.0),
+        (0.4, 0.0, 0.0),
+        (0.0, 0.4, 0.0),
+        (0.2, 0.2, 0.1)
+    ]
+    for t, f, i in sequence:
+        rec = engine.step(t, f, i)
+        print(f"Cycle {rec['cycle']} | State: {rec['state']} | Prior: {rec['prior']} | Coherence: {rec['coherence']}")
+    print("Oscillation preset complete.")
 
 
-def interactive_sandbox():
+def interactive_repl() -> None:
     engine = ConiunctioEngine()
-    print_banner()
+    print("=== Coniunctio Engine v0.2.1 Sandbox REPL ===")
+    print("Commands:")
+    print("  t, f, i         -> Step engine with comma-separated values (e.g., 0.2, 0.3, 0.1)")
+    print("  demo ramp       -> Run Gradual Individuation Ramp preset")
+    print("  demo rupture    -> Run Sudden Rupture & Re-Integration preset")
+    print("  demo oscillate  -> Run Oscillating Polarity Drift preset")
+    print("  status          -> Display current engine session statistics")
+    print("  export          -> Save session history to JSON")
+    print("  reset           -> Reset engine state")
+    print("  exit            -> Quit sandbox\n")
 
     while True:
         try:
-            user_input = input("coniunctio> ").strip()
-            cmd = user_input.lower()
-
-            if not user_input:
+            cmd = input("coniunctio> ").strip()
+            if not cmd:
                 continue
-
-            if cmd == "exit":
-                print("Exiting sandbox. The spine holds the tension. *88*")
+            if cmd.lower() == "exit":
+                print("Exiting sandbox.")
                 break
-
-            if cmd == "reset":
+            elif cmd.lower() == "reset":
                 engine = ConiunctioEngine()
-                print("-> Engine re-initialized to base GroundState.\n")
+                print("Engine re-initialized to GroundState.")
                 continue
-
-            if cmd == "history":
-                if not engine.history:
-                    print("-> No cycles recorded yet.\n")
-                    continue
-                print(f"\n--- Trajectory History ({len(engine.history)} cycles) ---")
-                for rec in engine.history:
-                    print(
-                        f"Cycle {rec['cycle']} | State: {rec['state']:<12} | "
-                        f"Depth: {rec['spiral_depth']} | Coherence: {rec['coherence']:.4f} | "
-                        f"Input: {rec['input']}"
-                    )
-                print("-" * 55 + "\n")
+            elif cmd.lower() == "status":
+                print(f"Cycles: {len(engine.history)} | Spiral Depth: {engine.spiral_depth} | Prior: {[round(x, 4) for x in engine.prior]}")
                 continue
-
-            if cmd == "export":
+            elif cmd.lower() == "export":
                 if not engine.history:
-                    print("-> Nothing to export yet. Run some cycles first.\n")
+                    print("Nothing to export yet. Run a preset or enter a vector first.")
                     continue
                 filename = f"trajectory_{int(time.time())}.json"
                 with open(filename, "w", encoding="utf-8") as f:
                     json.dump(engine.history, f, indent=2)
-                print(f"-> Exported {len(engine.history)} cycles to {filename}\n")
+                print(f"History successfully exported to {filename}")
+                continue
+            elif cmd.lower() == "demo ramp":
+                run_preset_ramp(engine)
+                continue
+            elif cmd.lower() == "demo rupture":
+                run_preset_rupture(engine)
+                continue
+            elif cmd.lower() == "demo oscillate":
+                run_preset_oscillate(engine)
                 continue
 
-            if cmd.startswith("demo"):
-                parts = cmd.split()
-                preset_name = parts[1] if len(parts) > 1 else "spiral"
-                if preset_name not in PRESETS:
-                    print(f"Error: Unknown preset '{preset_name}'. Choose 'spiral' or 'shock'.\n")
-                    continue
-                print(f"-> Running '{preset_name}' preset trajectory...")
-                for t, f, i in PRESETS[preset_name]:
-                    print(f"   Input: ({t}, {f}, {i})")
-                    rec = engine.step(t, f, i)
-                    print_step(rec)
-                continue
-
-            # Parse comma-separated values
-            parts = [float(x.strip()) for x in user_input.split(",")]
+            parts = [float(x.strip()) for x in cmd.split(",")]
             if len(parts) != 3:
-                print("Error: Please provide 3 comma-separated numbers (e.g., 0.2, 0.25, 0.15).\n")
+                print("Error: Please provide exactly 3 comma-separated numbers (thought, feeling, instinct).")
                 continue
 
-            t, f, i = parts
-            rec = engine.step(t, f, i)
-            print_step(rec)
+            rec = engine.step(parts[0], parts[1], parts[2])
+            print(f"[{rec['state']}] Cycle {rec['cycle']} | Tension: {rec['tension']} | Coherence: {rec['coherence']} | Spiral Depth: {rec['spiral_depth']} | Prior: {rec['prior']}")
 
-        except ValueError:
-            print("Error: Invalid numeric format. Use commas like: 0.2, 0.3, 0.1\n")
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, EOFError):
             print("\nExiting sandbox.")
             break
+        except ValueError as e:
+            print(f"Input Error: {e}")
+        except Exception as e:
+            print(f"Error: {e}")
 
 
 if __name__ == "__main__":
-    interactive_sandbox()
+    interactive_repl()
