@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "coniunctio-engine"
+version = "0.2.1"
+description = "A zero-dependency Python diagnostic framework modeling dynamic psychological states and spiral coherence."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "zmnmnsr46868-stack" }
+]
+keywords = ["jungian-psychology", "predictive-coding", "dynamical-systems", "golden-ratio", "coherence"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com"
+
+[project.scripts]
+coniunctio-sandbox = "sandbox:interactive_repl"
+
+[tool.setuptools]
+py-modules = ["coniunctio_engine", "sandbox", "analyzer"]
