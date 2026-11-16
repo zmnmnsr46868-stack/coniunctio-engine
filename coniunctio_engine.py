@@ -1,63 +1,78 @@
-"""
-Coniunctio Engine: Executable Consciousness Model
-Models the interaction between the Witness @ [0,0,0] and the MagneticDyad 
-to transform reactive loops into intentional evolutionary spirals.
-"""
-
 import math
 import time
 
-class GroundState:
-    """Represents the unconditioned baseline at [0, 0, 0]."""
-    def __init__(self):
-        self.coordinates = (0.0, 0.0, 0.0)
-        self.status = "Stable / Unperturbed"
+PHI_INV = (math.sqrt(5) - 1) / 2  # Golden ratio conjugate ≈ 0.61803398875
+LEARNING_RATE = 1.0 - PHI_INV     # ≈ 0.38196601125 (predictive prior update weight)
 
-    def measure(self):
-        return self.coordinates
+
+class GroundState:
+    """The unconditioned, unperturbed observer baseline at [0, 0, 0]."""
+    def __init__(self):
+        self.anchor = [0.0, 0.0, 0.0]
+
+    def reset(self):
+        return list(self.anchor)
+
 
 class MagneticDyad:
-    """Models the active polarities: Thought, Feeling, and Instinct."""
+    """Models active psychological polarities (Thought, Feeling, Instinct) against predictive priors."""
     def __init__(self, thought=0.0, feeling=0.0, instinct=0.0):
-        self.thought = thought
-        self.feeling = feeling
-        self.instinct = instinct
+        self.vector = [float(thought), float(feeling), float(instinct)]
 
-    def magnitude(self):
-        return math.sqrt(self.thought**2 + self.feeling**2 + self.instinct**2)
+    def prediction_error(self, prior):
+        """Calculates Euclidean magnitude of surprise (input minus expected prior)."""
+        diff = [v - p for v, p in zip(self.vector, prior)]
+        return math.sqrt(sum(d ** 2 for d in diff))
+
 
 class Witness:
-    """The tuning fork / bounded function at the center."""
-    def __init__(self):
-        self.baseline = GroundState()
+    """The central observer introducing the pause and measuring bounded coherence."""
+    def __init__(self, threshold=PHI_INV):
+        self.threshold = threshold
 
-    def observe(self, dyad: MagneticDyad):
-        tension = dyad.magnitude()
-        # The pause introduces coherence
+    def observe(self, tension):
         coherence = 1.0 / (1.0 + tension)
-        return coherence
+        phase_locked = coherence > self.threshold
+        return coherence, phase_locked
+
 
 class ConiunctioEngine:
-    """The master integration loop."""
+    """Master v0.2 integration engine with stateful spiral memory and predictive priors."""
     def __init__(self):
+        self.ground = GroundState()
         self.witness = Witness()
-        self.current_spiral_cycle = 1
+        self.prior = self.ground.reset()
+        self.spiral_depth = 0
+        self.history = []
 
     def step(self, thought, feeling, instinct):
         dyad = MagneticDyad(thought, feeling, instinct)
-        coherence = self.witness.observe(dyad)
-        
-        print(f"[CYCLE {self.current_spiral_cycle}] Tension: {dyad.magnitude():.3f} | Coherence: {coherence:.3f}")
-        
-        if coherence > 0.618:
-            print(">> Phase Lock Achieved: Transitioning Loop to Spiral.")
-        else:
-            print(">> Noise detected. Maintaining baseline at [0, 0, 0].")
-            
-        self.current_spiral_cycle += 1
-        return coherence
+        tension = dyad.prediction_error(self.prior)
+        coherence, locked = self.witness.observe(tension)
 
-if __name__ == "__main__":
-    engine = ConiunctioEngine()
-    # Test simulation step
-    engine.step(0.2, 0.3, 0.1)
+        if locked:
+            self.spiral_depth += 1
+            # Update predictive prior toward integrated state
+            self.prior = [
+                p + LEARNING_RATE * (v - p)
+                for p, v in zip(self.prior, dyad.vector)
+            ]
+            state = "SPIRAL"
+        else:
+            # High surprise/noise: return to unconditioned GroundState anchor
+            self.spiral_depth = 0
+            self.prior = self.ground.reset()
+            state = "GROUND_RESET"
+
+        record = {
+            "cycle": len(self.history) + 1,
+            "input": dyad.vector,
+            "tension": round(tension, 4),
+            "coherence": round(coherence, 4),
+            "state": state,
+            "spiral_depth": self.spiral_depth,
+            "prior": [round(x, 4) for x in self.prior],
+            "timestamp": time.time(),
+        }
+        self.history.append(record)
+        return record
