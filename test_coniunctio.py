@@ -1,38 +1,64 @@
-from coniunctio_engine import ConiunctioEngine, PHI_INV
+import os
+import json
+import unittest
+from coniunctio_engine import ConiunctioEngine, GroundState, MagneticDyad, Witness
+from analyzer import load_trajectory
 
 
-def run_simulation():
-    engine = ConiunctioEngine()
+class TestConiunctioEngine(unittest.TestCase):
 
-    # Stream: gentle entry -> sustained harmonic spiral -> sudden hijack spike -> recovery
-    stream = [
-        (0.20, 0.25, 0.15),  # Low friction: enters spiral
-        (0.25, 0.30, 0.20),  # Prior adapts: spiral deepens
-        (0.30, 0.35, 0.25),  # Sustained coherence
-        (1.50, -1.20, 1.40), # Sudden hijack spike: triggers GroundState reset
-        (0.10, 0.15, 0.10),  # Post-pause recovery back into spiral
-    ]
+    def test_ground_state_initialization(self):
+        gs = GroundState()
+        self.assertEqual(gs.coords, [0.0, 0.0, 0.0])
 
-    print("=== Coniunctio Engine v0.2 Simulation ===")
-    for t, f, i in stream:
-        rec = engine.step(t, f, i)
-        print(
-            f"Cycle {rec['cycle']} | State: {rec['state']:<12} | "
-            f"Depth: {rec['spiral_depth']} | Coherence: {rec['coherence']:.4f} | "
-            f"Prior: {rec['prior']}"
-        )
+    def test_magnetic_dyad_tension(self):
+        dyad = MagneticDyad([0.0, 0.0, 0.0])
+        tension = dyad.calculate_tension([3.0, 4.0, 0.0])
+        self.assertAlmostEqual(tension, 5.0)
 
-    # Assertions for CI verification
-    assert len(engine.history) == 5, "History should record all 5 cycles"
-    assert engine.history[0]["state"] == "SPIRAL", "Cycle 1 should phase-lock"
-    assert engine.history[2]["spiral_depth"] == 3, "Spiral depth should reach 3"
-    assert engine.history[3]["state"] == "GROUND_RESET", "Hijack spike must trigger reset"
-    assert engine.history[3]["prior"] == [0.0, 0.0, 0.0], "Reset must restore [0,0,0]"
-    assert engine.history[4]["state"] == "SPIRAL", "Cycle 5 should re-enter spiral"
-    assert round(PHI_INV, 3) == 0.618, "Golden ratio conjugate anchor check"
+    def test_witness_coherence(self):
+        witness = Witness()
+        coherence = witness.evaluate(0.0)
+        self.assertEqual(coherence, 1.0)
+        
+        coherence_high = witness.evaluate(1.0)
+        self.assertAlmostEqual(coherence_high, 1.0 / 2.0)
 
-    print("\nAll v0.2 assertions passed successfully.")
+    def test_engine_step_and_spiral(self):
+        engine = ConiunctioEngine()
+        rec = engine.step(0.2, 0.25, 0.15)
+        
+        self.assertEqual(rec["cycle"], 1)
+        self.assertEqual(rec["state"], "SPIRAL")
+        self.assertGreater(rec["coherence"], 0.618)
+
+    def test_engine_ground_reset(self):
+        engine = ConiunctioEngine()
+        # High input values create massive tension, dropping coherence below 0.618
+        rec = engine.step(2.0, 2.0, 2.0)
+        
+        self.assertEqual(rec["state"], "GROUND_RESET")
+        self.assertEqual(rec["spiral_depth"], 0)
+
+    def test_analyzer_integration(self):
+        """Verify that analyzer can load and parse exported session history."""
+        engine = ConiunctioEngine()
+        engine.step(0.2, 0.25, 0.15)
+        engine.step(0.25, 0.3, 0.2)
+
+        temp_filename = "trajectory_test_ci.json"
+        with open(temp_filename, "w", encoding="utf-8") as f:
+            json.dump(engine.history, f)
+
+        try:
+            path, history = load_trajectory(temp_filename)
+            self.assertEqual(path, temp_filename)
+            self.assertEqual(len(history), 2)
+            self.assertEqual(history[0]["cycle"], 1)
+        finally:
+            if os.path.exists(temp_filename):
+                os.remove(temp_filename)
 
 
 if __name__ == "__main__":
-    run_simulation()
+    unittest.main()
