@@ -1,24 +1,42 @@
-# Coniunctio Engine (v0.2)
+# Coniunctio Engine
 
-A zero-dependency Python diagnostic framework modeling dynamic psychological states, predictive coding, and spiral coherence around the golden ratio conjugate ($\phi^{-1} \approx 0.618$).
+A production-grade, version-aware, and cryptographically verified simulation and persistence framework designed to model polar tension, friction dynamics, non-dual integration cycles, and homeostatic adaptation.
 
-Built exclusively with the Python standard library (`math`, `time`, `json`, `glob`, `os`, `sys`, `unittest`).
+## Architectural Overview
 
----
-
-## Core Architecture
-
-* **`coniunctio_engine.py`**: The core state-transition engine (`GroundState`, `MagneticDyad`, `Witness`, and `ConiunctioEngine`) tracking cycle coherence, relational tension, and adaptive priors.
-* **`sandbox.py`**: Interactive command-line REPL for testing live trajectories, running built-in presets (`spiral` and `shock`), and exporting session histories to JSON.
-* **`analyzer.py`**: Diagnostic post-processor that parses exported `trajectory_*.json` runs, computes session metrics, and plots an ASCII coherence timeline against the `0.618` phase-lock threshold.
-* **`test_coniunctio.py`**: Automated unit and integration test suite verified on every push via GitHub Actions.
+The engine enforces strict operational continuity across environments through a four-layer persistence stack:
+1. **Structural Invariants:** Core metadata, signatures (`"88"`), and immutable framework identifiers.
+2. **Engine Configuration:** Thresholds, adaptation rates, alpha/beta coupling coefficients, and homeostatic drift parameters.
+3. **Dynamic State & History:** Live phases, active/peak friction tracking, tension dyads, and strictly sequenced witness logs.
+4. **Metadata & Provenance:** SHA-256 integrity digests with constant-time verification.
 
 ---
 
-## Quick Start
+## Restoration Mechanics
 
-### 1. Run the Interactive Sandbox
-Launch the REPL to feed `(thought, feeling, instinct)` vectors or run preset trajectories:
+The framework provides two distinct restoration pathways:
+* **Path A (Baseline Seed):** Reconstructs a fresh engine instance initialized from preserved baseline configuration (`0.5.1-anchor`).
+* **Path B (Runtime Snapshot):** Reconstructs both configuration and live dynamic state, restoring exact witness history and verifying physical consistency invariants (`0.5.2-snapshot` / `0.6.0-snapshot`).
 
-```bash
-python sandbox.py
+---
+
+## Validation & Security (`SeedValidator`)
+
+The validation pipeline enforces rigorous gatekeeping rules:
+* **Constant Injection Rejection:** Rejects non-standard JSON constants (`NaN`, `Infinity`) at ingestion.
+* **Cryptographic Integrity:** Validates 64-character lowercase hexadecimal SHA-256 checksums using constant-time comparison (`hmac.compare_digest`).
+* **Physical Invariants:** Enforces non-negative friction bounds, consecutive sequence numbering in witness logs, and ensures `peak_friction` never falls below `active_friction`.
+
+---
+
+## v0.6: Adaptive Capacity
+
+The latest iteration introduces **Homeostatic Threshold Breathing**:
+* Under sustained high-load profiles (`FRICTION` phase streaks), the engine dynamically adjusts its threshold capacity to absorb persistent tension without breaking conservation error tracking.
+* During stable integration phases (`GROUND` / `INTEGRATION`), parameters drift homeostatically back toward baseline configuration.
+
+---
+
+## Automated CI/CD
+
+Continuous integration pipelines via GitHub Actions automatically execute the multi-cycle persistence and continuity test suite (`test_coniunctio_persistence.py`) across diverse load profiles (balanced tension, strong asymmetry, reversed asymmetry, and zero-tension ground states) on every push.
