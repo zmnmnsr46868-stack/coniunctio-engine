@@ -48,6 +48,7 @@ class GroundState:
 
 class AdaptiveConiunctioEngine:
     def __init__(self, threshold: float = 2.0, adapt_rate: float = 1.0, alpha: float = 1.0, beta: float = 0.1, homeostatic_drift: float = 0.05):
+        self.base_threshold = threshold
         self.threshold = threshold
         self.adapt_rate = adapt_rate
         self.alpha = alpha
@@ -60,25 +61,23 @@ class AdaptiveConiunctioEngine:
         
         self.current_phase = "GROUND"
         self.last_conservation_error = 0.0
-        self.friction_step_streak = 0  # Tracks consecutive friction/load pressure
+        self.friction_step_streak = 0
 
     def step(self):
         net_force = self.dyad.get_net_force()
         total_tension = self.dyad.get_total_tension()
         
-        # Compute current friction load
         friction = self.ground.compute_friction(net_force, total_tension, self.alpha, self.beta)
         
         if self.ground.is_stable():
             self.current_phase = "INTEGRATION"
             self.friction_step_streak = 0
             
-            # Homeostatic recovery: gently drift threshold back toward base configuration
-            if self.ground.threshold > self.ground.base_threshold:
-                self.ground.threshold = max(self.ground.base_threshold, self.ground.threshold - self.homeostatic_drift)
+            # Homeostatic recovery: drift threshold back toward base configuration
+            if self.ground.threshold > self.base_threshold:
+                self.ground.threshold = max(self.base_threshold, self.ground.threshold - self.homeostatic_drift)
                 self.threshold = self.ground.threshold
 
-            # Integration dampening
             pre_energy = total_tension
             self.dyad.tension_a *= 0.95
             self.dyad.tension_b *= 1.05
@@ -94,14 +93,12 @@ class AdaptiveConiunctioEngine:
                 self.ground.threshold += expansion
                 self.threshold = self.ground.threshold
 
-            # Adaptive reduction
             reduction = (self.adapt_rate + (0.1 * self.friction_step_streak)) * (friction - self.ground.threshold)
             if self.dyad.tension_a > 0:
                 self.dyad.tension_a = max(0.0, self.dyad.tension_a - reduction / 2)
             if self.dyad.tension_b < 0:
                 self.dyad.tension_b = min(0.0, self.dyad.tension_b + reduction / 2)
 
-        # Record via witness
         self.witness.record({
             "phase": self.current_phase,
             "friction": friction,
