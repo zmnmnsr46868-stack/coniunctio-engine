@@ -7,7 +7,7 @@ on:
     branches: [ main, master ]
 
 jobs:
-  test-and-simulate:
+  test-and-benchmark:
     runs-on: ubuntu-latest
 
     steps:
@@ -30,3 +30,7 @@ jobs:
     - name: Run v0.6 Adaptive Simulation Telemetry
       run: |
         python run_simulation_v06.py
+
+    - name: Run Comparative Benchmark Regression Guard
+      run: |
+        python run_benchmark.py
