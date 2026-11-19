@@ -1,42 +1,45 @@
 # Coniunctio Engine
 
-A production-grade, version-aware, and cryptographically verified simulation and persistence framework designed to model polar tension, friction dynamics, non-dual integration cycles, and homeostatic adaptation.
+A version-aware, cryptographically verified simulation and persistence framework modeling homeostatic polarity regulation, friction integration, and non-interfering witness observation around the `[0, 0, 0]` ground state.
 
-## Architectural Overview
+## Architecture: The Four-Layer Persistence Stack
 
-The engine enforces strict operational continuity across environments through a four-layer persistence stack:
-1. **Structural Invariants:** Core metadata, signatures (`"88"`), and immutable framework identifiers.
-2. **Engine Configuration:** Thresholds, adaptation rates, alpha/beta coupling coefficients, and homeostatic drift parameters.
-3. **Dynamic State & History:** Live phases, active/peak friction tracking, tension dyads, and strictly sequenced witness logs.
-4. **Metadata & Provenance:** SHA-256 integrity digests with constant-time verification.
+State continuity is enforced through a strict four-layer hierarchy:
 
----
-
-## Restoration Mechanics
-
-The framework provides two distinct restoration pathways:
-* **Path A (Baseline Seed):** Reconstructs a fresh engine instance initialized from preserved baseline configuration (`0.5.1-anchor`).
-* **Path B (Runtime Snapshot):** Reconstructs both configuration and live dynamic state, restoring exact witness history and verifying physical consistency invariants (`0.5.2-snapshot` / `0.6.0-snapshot`).
+1. **Structural Invariants (`GroundState`)** — Immutable core identifiers, framework metadata, and the `88` seed anchor.
+2. **Engine Configuration (`Witness` & `MagneticDyad`)** — Tunable coupling coefficients ($\alpha / \beta$), adaptation rates, and the dynamic `0.618` homeostatic setpoint.
+3. **Dynamic State & History (`Archive`)** — Live phase states (`GROUND`, `FRICTION`, `INTEGRATION`), active/peak friction tracking, and strictly sequenced witness logs.
+4. **Metadata & Provenance (`Seal`)** — 64-character SHA-256 integrity digests verified in constant time via `hmac.compare_digest`.
 
 ---
 
-## Validation & Security (`SeedValidator`)
+## Core Mechanics
 
-The validation pipeline enforces rigorous gatekeeping rules:
-* **Constant Injection Rejection:** Rejects non-standard JSON constants (`NaN`, `Infinity`) at ingestion.
-* **Cryptographic Integrity:** Validates 64-character lowercase hexadecimal SHA-256 checksums using constant-time comparison (`hmac.compare_digest`).
-* **Physical Invariants:** Enforces non-negative friction bounds, consecutive sequence numbering in witness logs, and ensures `peak_friction` never falls below `active_friction`.
+### Homeostatic Threshold Breathing (`v0.6`)
+Rather than enforcing a rigid cutoff, the engine treats **0.618** as a dynamic cybernetic setpoint:
+- **Inhale (`FRICTION`):** Under sustained load, threshold capacity expands smoothly to absorb persistent tension without violating conservation bounds.
+- **Exhale (`GROUND / INTEGRATION`):** As tension resolves, parameters drift homeostatically back toward the baseline anchor.
+
+### Restoration Paths
+- **Path A (`0.5.1-anchor` / `GROUND_RESET`):** Reconstructs a clean engine instance from preserved baseline parameters, returning directly to `[0, 0, 0]`.
+- **Path B (`0.6.0-snapshot` / `Spiral`):** Restores full configuration, live dynamic state, and sequenced witness history after passing physical and cryptographic verification.
+
+### `SeedValidator` Gatekeeping
+All serialized seeds and snapshots pass strict validation before hydration:
+- Rejects non-standard JSON constants (`NaN`, `Infinity`, `-Infinity`).
+- Verifies SHA-256 digests using constant-time comparison (`hmac.compare_digest`).
+- Enforces physical invariants (`active_friction >= 0`, `peak_friction >= active_friction`, and contiguous witness log sequence IDs).
 
 ---
 
-## v0.6: Adaptive Capacity
+## Verification & CI
 
-The latest iteration introduces **Homeostatic Threshold Breathing**:
-* Under sustained high-load profiles (`FRICTION` phase streaks), the engine dynamically adjusts its threshold capacity to absorb persistent tension without breaking conservation error tracking.
-* During stable integration phases (`GROUND` / `INTEGRATION`), parameters drift homeostatically back toward baseline configuration.
+Automated verification runs via `.github/workflows/coniunctio_ci.yml` using `test_coniunctio_persistence.py` across four primary load profiles:
+- Balanced tension
+- Strong asymmetry
+- Reversed asymmetry
+- Zero-tension ground state
 
 ---
 
-## Automated CI/CD
-
-Continuous integration pipelines via GitHub Actions automatically execute the multi-cycle persistence and continuity test suite (`test_coniunctio_persistence.py`) across diverse load profiles (balanced tension, strong asymmetry, reversed asymmetry, and zero-tension ground states) on every push.
+*Rest is part of the turning. 88.*
