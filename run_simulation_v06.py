@@ -31,7 +31,7 @@ def run_adaptive_simulation():
         (0.1, -0.1),  # Phase 5: Deep stabilization back toward baseline
     ]
 
-    trajectory = []
+    history = []
     step_counter = 0
 
     for regime_idx, (ta, tb) in enumerate(load_profile, start=1):
@@ -52,16 +52,18 @@ def run_adaptive_simulation():
                 f"Conservation Err: {engine.last_conservation_error:.4f}"
             )
 
-            trajectory.append({
-                "step": step_counter,
-                "regime": regime_idx,
-                "tension_a": ta,
-                "tension_b": tb,
-                "phase": latest["phase"],
-                "friction": latest["friction"],
-                "threshold": latest["threshold"],
-                "streak": latest["streak"],
-                "conservation_error": engine.last_conservation_error,
+            # Map v0.6 engine metrics to analyzer.py trajectory schema
+            raw_coherence = latest.get("coherence", 1.0 / (1.0 + latest["friction"]))
+            coherence = max(0.0, min(1.0, float(raw_coherence)))
+            state = "SPIRAL" if latest["phase"] in ("FRICTION", "SPIRAL") else latest["phase"]
+
+            history.append({
+                "cycle": step_counter,
+                "state": state,
+                "coherence": coherence,
+                "spiral_depth": latest.get("spiral_depth", latest["streak"]),
+                "tension": latest.get("tension", max(abs(ta), abs(tb))),
+                "input": latest.get("input", [ta, tb, round(ta - tb, 4)]),
             })
 
     print("\n" + "=" * 60)
@@ -69,16 +71,8 @@ def run_adaptive_simulation():
     print(f"Final Ground Threshold State: {engine.ground.threshold:.4f} (Base: {engine.base_threshold})")
     print("=" * 60)
 
-    output_data = {
-        "version": "0.6",
-        "base_threshold": engine.base_threshold,
-        "final_threshold": engine.ground.threshold,
-        "observation_count": engine.witness.observation_count,
-        "trajectory": trajectory,
-    }
-
     with open("trajectory_v06.json", "w", encoding="utf-8") as f:
-        json.dump(output_data, f, indent=2)
+        json.dump(history, f, indent=2)
 
     print("Exported trajectory data to trajectory_v06.json")
 
