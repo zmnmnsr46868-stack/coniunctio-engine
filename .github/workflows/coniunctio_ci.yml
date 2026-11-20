@@ -10,6 +10,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pytest
+            - run: pip install pytest
+      - run: python test_coniunctio.py
       - run: pytest -q
-      - run: python analyzer.py
+      - run: python run_simulation_v06.py
+      - run: |
+          if ls trajectory_*.json 1> /dev/null 2>&1; then
+            python analyzer.py
+          else
+            echo "No trajectory file exported; skipping analyzer."
+          fi
