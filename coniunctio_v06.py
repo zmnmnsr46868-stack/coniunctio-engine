@@ -160,10 +160,8 @@ class AdaptiveConiunctioEngine:
                 self.ground.threshold += expansion
                 self.threshold = self.ground.threshold
 
-            # Sign-agnostic tension damping toward zero
-            reduction = (self.adapt_rate + (0.1 * self.friction_step_streak)) * (
-                friction - self.ground.threshold
-            )
+            # Sign-agnostic progressive damping (allows multi-step streaks to register)
+            reduction = self.adapt_rate * (1.0 + 0.1 * self.friction_step_streak)
             half_red = reduction / 2.0
             self.dyad.set_tension(
                 self._damp_pole(self.dyad.tension_a, half_red),
