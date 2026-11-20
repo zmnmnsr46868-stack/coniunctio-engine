@@ -20,3 +20,10 @@ jobs:
           else
             echo "No trajectory file exported; skipping analyzer."
           fi
+      - name: Upload Trajectory JSON Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trajectory-v06
+          path: trajectory_v06.json
+          retention-days: 30
