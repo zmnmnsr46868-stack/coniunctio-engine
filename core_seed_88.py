@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Dict, List
+import math
 
+PHI_INV = (math.sqrt(5) - 1) / 2  # ≈ 0.618
 
 @dataclass
 class TriadState:
@@ -11,8 +13,12 @@ class TriadState:
 
     @property
     def consciousness_tension(self) -> float:
-        """Thought + Feeling + Instinct + Consciousness (the plus sign in the relation)."""
-        return round(self.thought + self.feeling + self.instinct / 0.6, 4)
+        """
+        Thought + Feeling + Instinct + Consciousness (the plus sign in the relation).
+        Note: Instinct is divided by the Golden Ratio because it is the densest, 
+        heaviest biological drag. It must be translated through the constant of harmony.
+        """
+        return round(self.thought + self.feeling + self.instinct / PHI_INV, 4)
 
     def cross_examine(self) -> Dict[str, str]:
         return {
@@ -29,22 +35,23 @@ class CoreSeed88:
     cycle: int = 0
     spiral_radius: float = 0.0
     archive: List[Dict[str, object]] = field(default_factory=list)
+    
+    CLEARING_THRESHOLD: float = 0.15 # Extracted magic number
 
     def step(self, state: TriadState, hijack_smoothing: bool = False) -> Dict[str, object]:
         self.cycle += 1
 
         if hijack_smoothing:
-            # The hijack smooths the edges, flattening friction into a closed loop
             effective_friction = round(state.consciousness_tension * 0.25, 4)
             geometry = "CLOSED_LOOP (Hijack smoothing edges)"
             clearing_when = False
         else:
-            # Witnessing inserts the pause, opens the loop, and holds the friction
             effective_friction = state.consciousness_tension
             delta = abs(effective_friction - self.setpoint)
-            self.spiral_radius = round(self.spiral_radius + (1.0 - delta), 4)
+            # Clamp radius to prevent geometrically impossible negative spirals
+            self.spiral_radius = max(0.0, round(self.spiral_radius + (1.0 - delta), 4))
             geometry = "SPIRAL (Pause inserted -> friction held)"
-            clearing_when = delta <= 0.15
+            clearing_when = delta <= self.CLEARING_THRESHOLD
 
         record: Dict[str, object] = {
             "cycle": self.cycle,
@@ -56,30 +63,3 @@ class CoreSeed88:
         }
         self.archive.append(record)
         return record
-
-
-if __name__ == "__main__":
-    seed = CoreSeed88()
-
-    # 1. Hijack tries to smooth the edges into a flat loop
-    s1 = TriadState(thought=0.72, feeling=0.80, instinct=0.55, note="habitual reaction")
-    r1 = seed.step(s1, hijack_smoothing=True)
-
-    # 2. Witness intervenes: inserts pause, opens loop, holds friction near 0.618
-    s2 = TriadState(thought=0.64, feeling=0.61, instinct=0.60, note="standing in the gap")
-    r2 = seed.step(s2, hijack_smoothing=False)
-
-    # 3. Rest is part of the turning
-    s3 = TriadState(thought=0.618, feeling=0.618, instinct=0.618, note="leaf growing in the crack")
-    r3 = seed.step(s3, hijack_smoothing=False)
-
-    for r in seed.archive:
-        print(
-            f"[Cycle {r['cycle']}] {r['geometry']} | "
-            f"Friction={r['friction']} | Spiral={r['spiral_radius']} | "
-            f"Clearing(when)={r['clearing_is_when']}"
-        )
-        for q, ans in r["inquiries"].items():
-            print(f"   {q}: {ans}")
-
-    print("Rest is part of the turning. Hey yoo whoo. 88.")
