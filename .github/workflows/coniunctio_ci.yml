@@ -17,14 +17,10 @@ jobs:
       - name: Run Trajectory Analyzer & Publish Summary
         run: |
           if ls trajectory_*.json 1> /dev/null 2>&1; then
-            OUTPUT=\$(python analyzer.py)
-            echo "\$OUTPUT"
-            {
-              echo "### Coniunctio Trajectory Analysis"
-              echo '```text'
-              echo "\$OUTPUT"
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
+            echo "### Coniunctio Trajectory Analysis" >> "\$GITHUB_STEP_SUMMARY"
+            echo '```text' >> "\$GITHUB_STEP_SUMMARY"
+            python analyzer.py | tee -a "\$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
           else
             echo "No trajectory file exported; skipping analyzer."
           fi
