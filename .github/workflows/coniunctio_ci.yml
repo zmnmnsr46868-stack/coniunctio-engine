@@ -14,16 +14,24 @@ jobs:
       - run: python test_coniunctio.py
       - run: pytest -q
       - run: python run_simulation_v06.py
-      - run: |
+      - name: Run Trajectory Analyzer & Publish Summary
+        run: |
           if ls trajectory_*.json 1> /dev/null 2>&1; then
-            python analyzer.py
+            OUTPUT=\$(python analyzer.py)
+            echo "\$OUTPUT"
+            {
+              echo "### Coniunctio Trajectory Analysis"
+              echo '```text'
+              echo "\$OUTPUT"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
           else
             echo "No trajectory file exported; skipping analyzer."
           fi
-      - name: Upload Trajectory JSON Artifact
+      - name: Upload Trajectory JSON Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: trajectory-v06
-          path: trajectory_v06.json
+          name: trajectory-logs
+          path: trajectory_*.json
           retention-days: 30
