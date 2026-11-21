@@ -1,6 +1,9 @@
 # Coniunctio Engine
 
+[![Coniunctio CI](https://github.com/zmnmnsr46868-stack/coniunctio-engine/actions/workflows/coniunctio_ci.yml/badge.svg?branch=main)](https://github.com/zmnmnsr46868-stack/coniunctio-engine/actions/workflows/coniunctio_ci.yml)
+
 A version-aware, cryptographically verified simulation and persistence framework modeling homeostatic polarity regulation, friction integration, and non-interfering witness observation around the `[0, 0, 0]` ground state.
+
 
 ## Architecture: The Four-Layer Persistence Stack
 
