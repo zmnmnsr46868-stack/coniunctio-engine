@@ -9,6 +9,7 @@ import hashlib
 import hmac
 import io
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -72,6 +73,7 @@ def _compute_seal_from_dict(payload_without_seal: dict[str, Any]) -> str:
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,
+        allow_nan=False,
     ).encode("utf-8")
     hmac_key = _get_hmac_key()
     if hmac_key is not None:
@@ -86,6 +88,21 @@ def _require_dict_section(payload: dict[str, Any], key: str) -> dict[str, Any]:
     return copy.deepcopy(value)
 
 
+def _reject_constant(name: str) -> Any:
+    raise ValueError(f"Non-standard JSON constant not allowed: {name}")
+
+
+def _loads_strict(raw: str) -> Any:
+    """json.loads that rejects NaN, Infinity and -Infinity."""
+    return json.loads(raw, parse_constant=_reject_constant)
+
+
+def _require_finite(name: str, value: float) -> float:
+    if not math.isfinite(value):
+        raise ValueError(f"Seed field '{name}' must be a finite number.")
+    return value
+
+
 @dataclass
 class GroundState:
     clearing: str = DEFAULT_CLEARING
@@ -95,7 +112,9 @@ class GroundState:
 
     def __post_init__(self) -> None:
         self.origin = list(self.origin)
-        self.golden_setpoint = float(self.golden_setpoint)
+        self.golden_setpoint = _require_finite(
+            "golden_setpoint", float(self.golden_setpoint)
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -124,9 +143,13 @@ class SpiralState:
 
     def __post_init__(self) -> None:
         self.step_count = int(self.step_count)
-        self.z_elevation = float(self.z_elevation)
+        self.z_elevation = _require_finite("z_elevation", float(self.z_elevation))
         self.phase = str(self.phase)
-        self.active_friction = float(self.active_friction)
+        self.active_friction = _require_finite(
+            "active_friction", float(self.active_friction)
+        )
+        if self.active_friction < 0:
+            raise ValueError("Seed field 'active_friction' must be >= 0.")
 
     def advance(self, friction: Optional[float] = None) -> "SpiralState":
         next_friction = (
@@ -235,6 +258,7 @@ class PreservationSeed:
             self.to_dict(include_seal=True),
             indent=indent,
             ensure_ascii=False,
+            allow_nan=False,
         )
 
     @staticmethod
@@ -245,7 +269,10 @@ class PreservationSeed:
         if not isinstance(provided_seal, str) or len(provided_seal) != 64:
             return False
         unsigned = {k: v for k, v in payload.items() if k != "sha256_seal"}
-        expected_seal = _compute_seal_from_dict(unsigned)
+        try:
+            expected_seal = _compute_seal_from_dict(unsigned)
+        except (ValueError, TypeError):
+            return False
         return hmac.compare_digest(
             provided_seal.encode("utf-8"),
             expected_seal.encode("utf-8"),
@@ -277,7 +304,7 @@ class PreservationSeed:
 
     @classmethod
     def from_json(cls, raw_json: str) -> "PreservationSeed":
-        payload = json.loads(raw_json)
+        payload = _loads_strict(raw_json)
         if not isinstance(payload, dict):
             raise ValueError("Seed JSON root must be an object.")
         return cls.from_dict(payload)
@@ -298,12 +325,10 @@ def load_seed_file(path: str | Path) -> PreservationSeed:
 def verify_seed_file(path: str | Path) -> bool:
     try:
         raw = Path(path).read_text(encoding="utf-8")
-        payload = json.loads(raw)
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        payload = _loads_strict(raw)
+    except (OSError, ValueError):
         return False
     return PreservationSeed.verify_payload(payload)
-
-
 def step_seed_file(
     path: str | Path, friction: Optional[float] = None
 ) -> PreservationSeed:
@@ -424,6 +449,9 @@ def run_cli(argv: Optional[Sequence[str]] = None) -> int:
             return 0
 
     return 1
+def _quiet_export(path: str | Path) -> int:
+    with mock.patch("sys.stdout", io.StringIO()):
+        return run_cli(["export", str(path)])
 
 
 class TestPreservationSeedCore(unittest.TestCase):
@@ -534,7 +562,43 @@ class TestPreservationSeedCore(unittest.TestCase):
         ).spiral.advance(friction=0.0)
         self.assertEqual(reset.active_friction, 0.0)
 
+    def test_non_finite_constants_rejected_in_json(self):
+        raw = PreservationSeed().to_json()
+        for const in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(const=const):
+                bad = raw.replace('"z_elevation": 4.0', f'"z_elevation": {const}')
+                self.assertNotEqual(bad, raw)
+                with self.assertRaises(ValueError):
+                    PreservationSeed.from_json(bad)
 
+    def test_overflowing_float_literal_rejected(self):
+        raw = PreservationSeed().to_json()
+        bad = raw.replace('"z_elevation": 4.0', '"z_elevation": 1e999')
+        self.assertNotEqual(bad, raw)
+        with self.assertRaises(ValueError):
+            PreservationSeed.from_json(bad)
+
+    def test_non_finite_and_negative_state_values_rejected(self):
+        for bad in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(value=bad):
+                with self.assertRaises(ValueError):
+                    SpiralState(z_elevation=bad)
+                with self.assertRaises(ValueError):
+                    SpiralState(active_friction=bad)
+                with self.assertRaises(ValueError):
+                    GroundState(golden_setpoint=bad)
+        with self.assertRaises(ValueError):
+            SpiralState(active_friction=-0.1)
+        with self.assertRaises(ValueError):
+            PreservationSeed().advance(friction=-1.0)
+        self.assertEqual(SpiralState(active_friction=0.0).active_friction, 0.0)
+
+    def test_validly_sealed_negative_friction_rejected(self):
+        payload = PreservationSeed().to_dict(include_seal=False)
+        payload["spiral"]["active_friction"] = -2.0
+        payload["sha256_seal"] = _compute_seal_from_dict(payload)
+        with self.assertRaises(ValueError):
+            PreservationSeed.from_dict(payload)
 class TestPreservationSeedCli(unittest.TestCase):
     def test_no_arg_prints_inspection_line(self):
         out = io.StringIO()
@@ -662,7 +726,7 @@ class TestPreservationSeedCli(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             seed_path = Path(tmpdir) / "friction_seed.json"
-            self.assertEqual(run_cli(["export", str(seed_path)]), 0)
+            self.assertEqual(_quiet_export(seed_path), 0)
 
             out = io.StringIO()
             with mock.patch("sys.stdout", out):
@@ -685,7 +749,7 @@ class TestPreservationSeedCli(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             seed_path = Path(tmpdir) / "hmac_seed.json"
             with mock.patch.dict(os.environ, {"SEED_HMAC_KEY": "key-one"}):
-                self.assertEqual(run_cli(["export", str(seed_path)]), 0)
+                self.assertEqual(_quiet_export(seed_path), 0)
                 out = io.StringIO()
                 with mock.patch("sys.stdout", out):
                     rc = run_cli(["step", str(seed_path), "--friction", "0.25"])
@@ -705,6 +769,37 @@ class TestPreservationSeedCli(unittest.TestCase):
                     rc_step_fail = run_cli(["step", str(seed_path)])
                 self.assertEqual(rc_step_fail, 1)
                 self.assertTrue(err_step.getvalue().startswith("Error:"))
+
+    def test_cli_rejects_negative_friction_and_leaves_file_unchanged(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            seed_path = Path(tmpdir) / "neg_friction.json"
+            self.assertEqual(_quiet_export(seed_path), 0)
+            before = seed_path.read_text(encoding="utf-8")
+            err = io.StringIO()
+            with mock.patch("sys.stderr", err):
+                rc = run_cli(["step", str(seed_path), "--friction", "-3"])
+            self.assertEqual(rc, 1)
+            self.assertTrue(err.getvalue().startswith("Error:"))
+            self.assertEqual(seed_path.read_text(encoding="utf-8"), before)
+
+    def test_cli_rejects_file_containing_nan(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            nan_path = Path(tmpdir) / "nan.json"
+            raw = PreservationSeed().to_json()
+            nan_path.write_text(
+                raw.replace('"z_elevation": 4.0', '"z_elevation": NaN'),
+                encoding="utf-8",
+            )
+            out = io.StringIO()
+            with mock.patch("sys.stdout", out):
+                rc_verify = run_cli(["verify", str(nan_path)])
+            self.assertEqual(rc_verify, 1)
+            self.assertEqual(out.getvalue().strip(), "INVALID")
+            err = io.StringIO()
+            with mock.patch("sys.stderr", err):
+                rc_inspect = run_cli(["inspect", str(nan_path)])
+            self.assertEqual(rc_inspect, 1)
+            self.assertTrue(err.getvalue().startswith("Error:"))
 
     def test_recursion_guard_subprocess_test_run(self):
         if os.environ.get("SEED_TEST_CHILD") == "1":
