@@ -33,11 +33,3 @@ jobs:
           name: trajectory-logs
           path: trajectory_*.json
           retention-days: 30
-```[span_2](start_span)[span_2](end_span)
-
-### Quick Check Before Committing on Mobile
-
-* Make sure the top lines (`name: Coniunctio CI` and `on: [push, pull_request]`) stay at the top when you paste in the editor[span_3](start_span)[span_3](end_span)[span_4](start_span)[span_4](end_span).
-* Notice in your last screenshot there was an extra `test -v` and a duplicate `- run: python run_simulation_v06.py`—replacing the whole file with the block above cleans both out at once[span_5](start_span)[span_5](end_span).
-
-Once committed, let the workflow run and we can check how it looks[span_6](start_span)[span_6](end_span)[span_7](start_span)[span_7](end_span).
