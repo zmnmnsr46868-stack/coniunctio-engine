@@ -7,17 +7,31 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - run: pip install pytest
+
       - run: python test_coniunctio.py
+
       - run: pytest -q
+
       - name: Run PreservationSeed tests
         run: python preservation_seed_v2.py test -v
+
+      - name: Run PreservationSeed tests (keyed HMAC mode)
+        run: python preservation_seed_v2.py test -v
+        env:
+          SEED_HMAC_KEY: ci-test-key
+
       - run: python run_simulation_v06.py
+
       - name: Run Trajectory Analyzer & Publish Summary
+        shell: bash
         run: |
+          set -o pipefail
           if ls trajectory_*.json 1> /dev/null 2>&1; then
             echo "### Coniunctio Trajectory Analysis" >> "$GITHUB_STEP_SUMMARY"
             echo '```text' >> "$GITHUB_STEP_SUMMARY"
@@ -26,6 +40,7 @@ jobs:
           else
             echo "No trajectory file exported; skipping analyzer."
           fi
+
       - name: Upload Trajectory JSON Artifacts
         if: always()
         uses: actions/upload-artifact@v4
