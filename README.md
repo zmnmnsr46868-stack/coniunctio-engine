@@ -9,13 +9,13 @@ A version-aware, integrity-sealed (HMAC-authenticated when keyed) simulation and
 State continuity is structured around four core layers:
 
 1. **Structural Invariants (`GroundState`)** — Immutable core identifiers, framework metadata, and the `88` seed anchor.
-2. **Engine Configuration (`Witness` & `MajesticDyad`)** — Tunable coupling coefficients (`α`, `γ`, `β`), adaptation rates, and the dynamic `0.618` homeostatic setpoint.
-3. **Dynamic State & History (`Archon`)** — Live phase states (`GROUND`, `FRICTION`, `INTEGRATION`), friction tracking, and witness observation logs.
-4. **Metadata & Provenance (`Seal`)** — 64-character SHA-256 integrity digests (`HMAC-SHA256` when `SEED_HMAC_KEY` is set) verified in constant time via `hmac.compare_digest`.
+2. **Engine Configuration (`Witness` & `MagneticDyad`)** — Tunable coupling coefficients, adaptation rates, and the dynamic `0.618` homeostatic setpoint.
+3. **Dynamic State & History (`Archive`)** — Live phase states (`GROUND`, `FRICTION`, `INTEGRATION`), friction tracking, and witness observation logs.
+4. **Metadata & Provenance (`Seal`)** — 64-character SHA-256 integrity digests (HMAC-SHA256 when `SEED_HMAC_KEY` is set) verified in constant time via `hmac.compare_digest`.
 
 ## Core Mechanics
 
-### Homeostatic Threshold Breathing (`v0.6`)
+### Homeostatic Threshold Breathing (v0.6)
 
 Rather than enforcing a rigid cutoff, the engine treats `0.618` as a dynamic cybernetic setpoint:
 
@@ -24,8 +24,8 @@ Rather than enforcing a rigid cutoff, the engine treats `0.618` as a dynamic cyb
 
 ### Restoration Paths
 
-- **Path A (`0.6.1-anchor` / `GRANULARITY`):** Reconstructs a clean engine instance from preserved baseline parameters, returning directly to `[0, 0, 0]`.
-- **Path B (`0.6.4-snapshot` / `ARCHIVE`):** Restores full configuration, live dynamic state, and witness history after passing integrity and validation checks.
+- **Path A (anchor):** Reconstructs a clean engine instance from preserved baseline parameters, returning directly to `[0, 0, 0]`.
+- **Path B (snapshot):** Restores full configuration, live dynamic state, and witness history after passing integrity and validation checks.
 
 ## Seed Validation (`preservation_seed_v2.py`)
 
@@ -37,7 +37,8 @@ Serialized seeds are verified and validated before hydration:
 
 ## Core Seed (`core_seed_88.py`)
 
-- Implements `TriadState` (symmetric-active `0.618` conscious awareness and `cross_examination_inquiry`) and `ConiunctioEngine` (inward vs. outward step mechanics around the `0.618` setpoint).
+- `TriadState` holds `thought`, `feeling` and `instinct`. Its `consciousness_tension` property sums them, with instinct divided by the inverse golden ratio (`PHI_INV ≈ 0.618`), and `cross_examine()` returns the inquiries each part asks of the others.
+- `CoreSeed88` steps a `TriadState` around the `0.618` setpoint and records every cycle in its `archive`. A normal step adjusts a spiral radius by (1 − distance from the setpoint), never below 0, and reports `SPIRAL`. With `hijack_smoothing=True` it damps friction to a quarter and reports `CLOSED_LOOP`, which never counts as a clearing. A cycle is a clearing when its distance from the setpoint is within `CLEARING_THRESHOLD` (0.15).
 
 ## Verification & CI
 
