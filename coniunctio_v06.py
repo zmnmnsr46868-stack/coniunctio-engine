@@ -3,9 +3,7 @@ coniunctio_v06.py - Coniunctio Engine v0.6 ("Adaptive Capacity")
 Extends core dynamics with homeostatic threshold breathing, dynamic adaptation
 rates, sign-agnostic damping, and energy-conserving integration.
 """
-
 import math
-
 
 class Witness:
     def __init__(self):
@@ -15,7 +13,6 @@ class Witness:
     def record(self, state_snapshot: dict):
         self.observation_count += 1
         self.log.append((self.observation_count, state_snapshot))
-
 
 class MagneticDyad:
     def __init__(self, tension_a: float = 0.0, tension_b: float = 0.0):
@@ -38,7 +35,6 @@ class MagneticDyad:
     def is_balanced(self) -> bool:
         return math.isclose(self.get_net_force(), 0.0, abs_tol=1e-9)
 
-
 class GroundState:
     def __init__(self, threshold: float = 2.0):
         if not math.isfinite(threshold) or threshold < 0:
@@ -59,7 +55,6 @@ class GroundState:
     def is_stable(self) -> bool:
         return self.friction <= self.threshold
 
-
 class AdaptiveConiunctioEngine:
     def __init__(
         self,
@@ -69,24 +64,28 @@ class AdaptiveConiunctioEngine:
         beta: float = 0.1,
         homeostatic_drift: float = 0.05,
     ):
+        if not all(
+            math.isfinite(v)
+            for v in (threshold, adapt_rate, alpha, beta, homeostatic_drift)
+        ):
+            raise ValueError("engine parameters must be finite numbers")
+        if threshold <= 0:
+            raise ValueError("threshold must be positive")
         if adapt_rate <= 0:
             raise ValueError("adapt_rate must be positive")
         if alpha < 0 or beta < 0:
             raise ValueError("friction weights must be non-negative")
         if homeostatic_drift < 0:
             raise ValueError("homeostatic_drift must be non-negative")
-
         self.base_threshold = float(threshold)
         self.threshold = float(threshold)
         self.adapt_rate = float(adapt_rate)
         self.alpha = float(alpha)
         self.beta = float(beta)
         self.homeostatic_drift = float(homeostatic_drift)
-
         self.dyad = MagneticDyad(0.0, 0.0)
         self.ground = GroundState(threshold=threshold)
         self.witness = Witness()
-
         self.current_phase = "GROUND"
         self.last_conservation_error = 0.0
         self.friction_step_streak = 0
@@ -95,7 +94,6 @@ class AdaptiveConiunctioEngine:
         if target_total <= 0.0:
             self.last_conservation_error = 0.0
             return
-
         is_opposing = (self.dyad.tension_a * self.dyad.tension_b) < 0
         if is_opposing:
             if abs(self.dyad.tension_a) >= abs(self.dyad.tension_b):
@@ -109,12 +107,10 @@ class AdaptiveConiunctioEngine:
             sign_b = 1.0 if self.dyad.tension_b >= 0 else -1.0
             new_a = sign_a * (target_total * 0.5)
             new_b = sign_b * (target_total * 0.5)
-
         raw_sum = abs(new_a) + abs(new_b)
         if raw_sum > 0.0:
             scale = target_total / raw_sum
             self.dyad.set_tension(new_a * scale, new_b * scale)
-
         post_energy = self.dyad.get_total_tension()
         self.last_conservation_error = abs(target_total - post_energy)
 
@@ -128,15 +124,12 @@ class AdaptiveConiunctioEngine:
     def step(self):
         net_force = self.dyad.get_net_force()
         total_tension = self.dyad.get_total_tension()
-
         friction = self.ground.compute_friction(
             net_force, total_tension, self.alpha, self.beta
         )
-
         if self.ground.is_stable():
             self.current_phase = "INTEGRATION"
             self.friction_step_streak = 0
-
             # Homeostatic recovery: drift threshold back toward base configuration
             if self.ground.threshold > self.base_threshold:
                 self.ground.threshold = max(
@@ -144,14 +137,12 @@ class AdaptiveConiunctioEngine:
                     self.ground.threshold - self.homeostatic_drift,
                 )
                 self.threshold = self.ground.threshold
-
             # Energy-conserving polarity rebalancing
             self._rebalance_conserving_energy(total_tension)
         else:
             self.current_phase = "FRICTION"
             self.friction_step_streak += 1
             self.last_conservation_error = 0.0
-
             # Adaptive Capacity: expand threshold dynamically under sustained load
             if self.friction_step_streak > 2:
                 expansion = self.homeostatic_drift * (
@@ -159,7 +150,6 @@ class AdaptiveConiunctioEngine:
                 )
                 self.ground.threshold += expansion
                 self.threshold = self.ground.threshold
-
             # Sign-agnostic progressive damping (allows multi-step streaks to register)
             reduction = self.adapt_rate * (1.0 + 0.1 * self.friction_step_streak)
             half_red = reduction / 2.0
@@ -167,7 +157,6 @@ class AdaptiveConiunctioEngine:
                 self._damp_pole(self.dyad.tension_a, half_red),
                 self._damp_pole(self.dyad.tension_b, half_red),
             )
-
         self.witness.record(
             {
                 "phase": self.current_phase,
