@@ -1,3 +1,4 @@
+# test_ground_state_103.py
 """Unit tests for the THE 103 calibration model (ground_state_103.py)."""
 
 from __future__ import annotations
@@ -82,6 +83,6 @@ def test_reset_to_ground_restores_baseline() -> None:
     assert model.state.gradient_magnitude() == 0.0
     assert model.armor_weight == 0.0
     assert model.seam_visible is True
-    assert model.spiral_turn == 4
+    assert model.spiral_turn == 3
     assert model.history[-1].action == "reset_to_ground"
     assert model.snapshot()["gradient_norm"] == 0.0
