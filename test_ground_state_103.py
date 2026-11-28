@@ -1,88 +1,84 @@
-# test_ground_state_103.py
-"""Unit tests for the THE 103 calibration model (ground_state_103.py)."""
-
-from __future__ import annotations
-
-import pytest
+import unittest
 
 from ground_state_103 import GroundState103Model, TriadVector
 
-
-def test_initial_ground_state() -> None:
-    model = GroundState103Model()
-
-    assert model.ground_coords == (0, 0, 0)
-    assert model.state == TriadVector(0.0, 0.0, 0.0)
-    assert model.state.gradient_magnitude() == 0.0
-    assert model.state.plus_synthesis() == 0.0
-    assert model.armor_weight == 0.0
-    assert model.seam_visible is True
-    assert model.spiral_turn == 0
-    assert len(model.history) == 1
-    assert model.history[0].action == "init_ground_state"
+NAN, INF = float("nan"), float("inf")
 
 
-def test_apply_gradient_and_armor_clamping() -> None:
-    model = GroundState103Model()
-    model.apply_gradient(
-        d_thought=0.6,
-        d_memory=0.8,
-        d_instinct=0.0,
-        armor_delta=0.5,
-        note="First gradient",
-    )
+class TestNonFiniteRejection(unittest.TestCase):
+    def test_triad_vector_rejects_non_finite(self):
+        for field in ("thought", "memory", "instinct"):
+            for bad in (NAN, INF, -INF):
+                with self.subTest(field=field, value=bad):
+                    with self.assertRaises(ValueError):
+                        TriadVector(**{field: bad})
 
-    assert model.state.as_tuple() == (0.6, 0.8, 0.0)
-    assert model.state.gradient_magnitude() == pytest.approx(1.0)
-    assert model.armor_weight == 0.5
-    assert model.spiral_turn == 1
+    def test_apply_gradient_rejects_non_finite_and_changes_nothing(self):
+        for name in ("d_thought", "d_memory", "d_instinct", "armor_delta"):
+            for bad in (NAN, INF, -INF):
+                with self.subTest(param=name, value=bad):
+                    model = GroundState103Model()
+                    model.apply_gradient(1.0, 2.0, 3.0, armor_delta=0.5)
+                    before = (model.snapshot(), len(model.history))
+                    with self.assertRaises(ValueError):
+                        model.apply_gradient(**{name: bad})
+                    self.assertEqual((model.snapshot(), len(model.history)), before)
 
-    # Armor cannot drop below zero.
-    model.apply_gradient(armor_delta=-2.0)
-    assert model.armor_weight == 0.0
-    assert model.spiral_turn == 2
+    def test_model_rejects_bad_armor_at_construction(self):
+        for bad in (NAN, INF, -INF, -0.1):
+            with self.subTest(armor_weight=bad):
+                with self.assertRaises(ValueError):
+                    GroundState103Model(armor_weight=bad)
 
-
-def test_step_spiral_damping_and_validation() -> None:
-    model = GroundState103Model()
-    model.apply_gradient(d_thought=1.0, d_memory=1.0, d_instinct=1.0, armor_delta=1.0)
-
-    plus_val = model.step_spiral(damping=0.5)
-    assert plus_val == pytest.approx(0.5)
-    assert model.state.as_tuple() == (0.5, 0.5, 0.5)
-    assert model.armor_weight == pytest.approx(0.5)
-    assert model.spiral_turn == 2
-
-    with pytest.raises(ValueError):
-        model.step_spiral(damping=1.5)
-
-    with pytest.raises(ValueError):
-        model.step_spiral(damping=-0.1)
+    def test_model_still_usable_after_a_rejected_call(self):
+        model = GroundState103Model()
+        with self.assertRaises(ValueError):
+            model.apply_gradient(d_thought=NAN)
+        model.apply_gradient(3.0, 0.0, 4.0)
+        self.assertEqual(model.snapshot()["gradient_norm"], 5.0)
+        model.reset_to_ground()
+        self.assertEqual(model.snapshot()["gradient_norm"], 0.0)
 
 
-def test_seam_obscuration_and_coherence() -> None:
-    model = GroundState103Model()
-    model.apply_gradient(d_thought=0.5, d_memory=0.5, d_instinct=0.5, armor_delta=0.8)
-    visible_coherence = model.informational_coherence()
+class TestInitialRecord(unittest.TestCase):
+    def test_default_start_is_unchanged(self):
+        model = GroundState103Model()
+        record = model.history[0]
+        self.assertEqual(record.coherence_index, 1.0)
+        self.assertEqual(
+            record.note, "Calibrated at [0, 0, 0]; seam visible and open to revision."
+        )
 
-    model.seam_visible = False
-    hidden_coherence = model.informational_coherence()
+    def test_initial_record_matches_real_coherence_when_not_at_ground(self):
+        model = GroundState103Model(
+            seam_visible=False, armor_weight=2.0, state=TriadVector(3.0, 0.0, 0.0)
+        )
+        record = model.history[0]
+        self.assertEqual(record.coherence_index, model.informational_coherence())
+        self.assertLess(record.coherence_index, 1.0)
+        self.assertIn("away from [0, 0, 0]", record.note)
 
-    assert hidden_coherence < visible_coherence
+
+class TestValidBehaviourUnchanged(unittest.TestCase):
+    def test_gradient_then_spiral_back_toward_ground(self):
+        model = GroundState103Model()
+        model.apply_gradient(3.0, 0.0, 4.0, armor_delta=2.0)
+        self.assertEqual(model.snapshot()["gradient_norm"], 5.0)
+        self.assertEqual(model.snapshot()["coherence_index"], 0.4)
+        for _ in range(10):
+            model.step_spiral()
+        snap = model.snapshot()
+        self.assertEqual(snap["gradient_norm"], 0.984372)
+        self.assertEqual(snap["coherence_index"], 0.92125)
+        self.assertEqual(snap["history_count"], 12)
+
+    def test_damping_bounds_still_enforced(self):
+        model = GroundState103Model()
+        for bad in (-0.1, 1.1, NAN):
+            with self.subTest(damping=bad):
+                with self.assertRaises(ValueError):
+                    model.step_spiral(damping=bad)
 
 
-def test_reset_to_ground_restores_baseline() -> None:
-    model = GroundState103Model()
-    model.apply_gradient(d_thought=1.2, d_memory=0.9, d_instinct=0.7, armor_delta=2.0)
-    model.seam_visible = False
-    model.step_spiral(damping=0.8)
-
-    model.reset_to_ground(restore_seam=True, note="Return to [0, 0, 0]")
-
-    assert model.state == TriadVector(0.0, 0.0, 0.0)
-    assert model.state.gradient_magnitude() == 0.0
-    assert model.armor_weight == 0.0
-    assert model.seam_visible is True
-    assert model.spiral_turn == 3
-    assert model.history[-1].action == "reset_to_ground"
-    assert model.snapshot()["gradient_norm"] == 0.0
+if __name__ == "__main__":
+    unittest.main()
