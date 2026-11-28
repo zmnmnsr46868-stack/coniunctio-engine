@@ -1,4 +1,5 @@
 # ground_state_103.py
+
 """Calibration model for THE 103 — THE GROUND STATE in coniunctio-engine.
 
 Models unexcited potential [0, 0, 0], gradient-driven flow (89 / V_mem),
@@ -9,6 +10,7 @@ to revision.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
@@ -20,6 +22,11 @@ class TriadVector:
     thought: float = 0.0
     memory: float = 0.0
     instinct: float = 0.0
+
+    def __post_init__(self) -> None:
+        for name in ("thought", "memory", "instinct"):
+            if not math.isfinite(getattr(self, name)):
+                raise ValueError(f"TriadVector.{name} must be a finite number")
 
     def as_tuple(self) -> Tuple[float, float, float]:
         return (self.thought, self.memory, self.instinct)
@@ -56,14 +63,25 @@ class GroundState103Model:
     history: List[RevisionRecord] = field(default_factory=list)
 
     def __post_init__(self) -> None:
+        if not math.isfinite(self.armor_weight) or self.armor_weight < 0:
+            raise ValueError("armor_weight must be a finite non-negative number")
         if not self.history:
+            at_ground = (
+                self.state.gradient_magnitude() == 0.0
+                and self.armor_weight == 0.0
+                and self.seam_visible
+            )
             self.history.append(
                 RevisionRecord(
                     step=0,
                     action="init_ground_state",
                     gradient_norm=self.state.gradient_magnitude(),
-                    coherence_index=1.0,
-                    note="Calibrated at [0, 0, 0]; seam visible and open to revision.",
+                    coherence_index=round(self.informational_coherence(), 6),
+                    note=(
+                        "Calibrated at [0, 0, 0]; seam visible and open to revision."
+                        if at_ground
+                        else "Initialized away from [0, 0, 0]; seam and armor as given."
+                    ),
                 )
             )
 
@@ -76,6 +94,10 @@ class GroundState103Model:
         note: str = "",
     ) -> None:
         """Introduces difference/potential gradient (89 / bioelectric V_mem) and optional armor."""
+        if not all(
+            math.isfinite(v) for v in (d_thought, d_memory, d_instinct, armor_delta)
+        ):
+            raise ValueError("gradient and armor deltas must be finite numbers")
         self.state = TriadVector(
             thought=round(self.state.thought + d_thought, 6),
             memory=round(self.state.memory + d_memory, 6),
@@ -109,20 +131,19 @@ class GroundState103Model:
 
     def informational_coherence(self) -> float:
         """Models top-down informational coordination (+): penalizes unacknowledged/heavy armor."""
-        visible_heavy_armor_penalty = 0.20 if (self.seam_visible and self.armor_weight > 1.5) else 0.0
+        visible_heavy_armor_penalty = (
+            0.20 if (self.seam_visible and self.armor_weight > 1.5) else 0.0
+        )
         hidden_seam_penalty = (
             min(0.55, 0.25 + 0.15 * self.armor_weight)
             if (not self.seam_visible and self.armor_weight > 0.0)
             else 0.0
         )
-        raw_score = (
-            1.0
-            - min(
-                0.85,
-                0.08 * self.state.gradient_magnitude()
-                + visible_heavy_armor_penalty
-                + hidden_seam_penalty,
-            )
+        raw_score = 1.0 - min(
+            0.85,
+            0.08 * self.state.gradient_magnitude()
+            + visible_heavy_armor_penalty
+            + hidden_seam_penalty,
         )
         return round(max(0.0, raw_score), 6)
 
@@ -130,7 +151,6 @@ class GroundState103Model:
         """Advances one spiral turn (100 -> 103), dampening excess friction toward a new octave."""
         if not (0.0 <= damping <= 1.0):
             raise ValueError("damping must be between 0.0 and 1.0")
-
         self.state = TriadVector(
             thought=round(self.state.thought * damping, 6),
             memory=round(self.state.memory * damping, 6),
@@ -139,7 +159,6 @@ class GroundState103Model:
         self.armor_weight = round(self.armor_weight * damping, 6)
         self.spiral_turn += 1
         plus_val = round(self.state.plus_synthesis(), 6)
-
         self.history.append(
             RevisionRecord(
                 step=self.spiral_turn,
